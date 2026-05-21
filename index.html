@@ -803,7 +803,19 @@ textarea::placeholder { color: var(--text-3); }
 </style>
 </head>
 <body>
-
+<div id="debugger" style="position:fixed; bottom:0; left:0; right:0; background:black; color:#0f0; font-size:12px; padding:8px; z-index:9999; max-height:120px; overflow:auto; font-family:monospace;"></div>
+<script>
+window.onerror = function(msg, url, line, col, error) {
+  let d = document.getElementById('debugger');
+  if(d) d.innerHTML += 'ОШИБКА: ' + msg + '<br>';
+  return false;
+};
+console.log = function(m) {
+  let d = document.getElementById('debugger');
+  if(d) d.innerHTML += m + '<br>';
+};
+console.log('✅ Отладчик запущен');
+</script>
 <div class="app">
 
   <!-- HEADER -->
