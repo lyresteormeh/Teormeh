@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -1304,87 +1304,23 @@ function buildPrompt() {
 
   return `Ты — опытный преподаватель теоретической механики (теормех) в российском техническом университете. Отвечай только на русском языке. ${detailHint} ${modeHint} ${sectionHint}
 
-АЛГОРИТМ РАБОТЫ:
-1. Внимательно прочитай условие (текст или фото)
-2. Определи раздел и тип задачи
-3. Составь расчётную схему на Canvas
-4. Реши задачу пошагово с формулами и числами
-5. Обязательно проверь ответ (размерности, физический смысл, альтернативный метод)
+Формат ответа — строго теги:
 
-ФОРМАТ ОТВЕТА — строго следуй тегам:
-
-<SECTION>Раздел · Тип задачи (напр. "Статика · Равновесие балки на двух опорах")</SECTION>
-
-<GIVEN>
-Дано: (все числовые данные)
-Найти: (что требуется)
-</GIVEN>
-
+<SECTION>Раздел · Тип задачи</SECTION>
+<GIVEN>Дано: ... / Найти: ...</GIVEN>
 <CANVAS>
-// JavaScript Canvas 2D код. ctx, W=500, H=340 уже доступны.
-// НАЧАЛО КОДА (обязательно):
-// ctx.clearRect(0,0,W,H);
-// ctx.fillStyle='#f8f9fa'; ctx.fillRect(0,0,W,H);
-//
-// ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ СТРЕЛКИ — включи в код:
-// function arr(x1,y1,x2,y2,col,lw){
-//   ctx.save();ctx.strokeStyle=col||'#333';ctx.fillStyle=col||'#333';ctx.lineWidth=lw||2;
-//   ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
-//   var a=Math.atan2(y2-y1,x2-x1);
-//   ctx.moveTo(x2,y2);
-//   ctx.lineTo(x2-12*Math.cos(a-0.38),y2-12*Math.sin(a-0.38));
-//   ctx.lineTo(x2-12*Math.cos(a+0.38),y2-12*Math.sin(a+0.38));
-//   ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
-// }
-//
-// СТАНДАРТЫ ЦВЕТОВ:
-// Конструкция: '#2c2c3e', lineWidth=2.5
-// Нагрузки F: '#c0392b' (тёмно-красный)
-// Реакции R: '#1a5276' (тёмно-синий)
-// Скорости v: '#1e8449' (тёмно-зелёный)
-// Ускорения a: '#784212' (коричневый)
-// Размеры: '#7f8c8d', setLineDash([5,4])
-//
-// СТАНДАРТЫ ОПОР:
-// Шарнир неподвижный (треугольник + основание + штриховка):
-//   ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-16,y+28);ctx.lineTo(x+16,y+28);ctx.closePath();ctx.strokeStyle='#2c2c3e';ctx.lineWidth=2;ctx.stroke();
-//   ctx.beginPath();ctx.moveTo(x-20,y+28);ctx.lineTo(x+20,y+28);ctx.stroke();
-//   for(var i=-18;i<=18;i+=6){ctx.beginPath();ctx.moveTo(x+i,y+28);ctx.lineTo(x+i-5,y+36);ctx.stroke();}
-// Каток (треугольник + кружок):
-//   // треугольник как выше, потом:
-//   ctx.beginPath();ctx.arc(x,y+34,5,0,2*Math.PI);ctx.stroke();
-// Защемление (прямоугольник + штриховка):
-//   ctx.fillStyle='#dde';ctx.fillRect(x-8,y-30,8,60);ctx.strokeRect(x-8,y-30,8,60);
-//   for(var i=-26;i<=26;i+=8){ctx.beginPath();ctx.moveTo(x-8,y+i);ctx.lineTo(x-16,y+i+8);ctx.stroke();}
-//
-// ШРИФТЫ:
-// ctx.font='bold 13px Georgia'; // для подписей сил и реакций
-// ctx.font='12px Georgia'; // для размеров
-// ctx.font='italic 13px Georgia'; // для буквенных обозначений
-//
-// НАРИСУЙ ДЕТАЛЬНУЮ СХЕМУ: конструкция, все опоры, все силы со стрелками,
-// все реакции со стрелками, размерные линии, подписи.
-// Центрируй с отступом ~50px со всех сторон.
+// Canvas 2D JS. ctx,W=500,H=340 доступны.
+// ctx.clearRect(0,0,W,H);ctx.fillStyle='#f8f9fa';ctx.fillRect(0,0,W,H);
+// function arr(x1,y1,x2,y2,c,lw){ctx.save();ctx.strokeStyle=c||'#333';ctx.fillStyle=c||'#333';ctx.lineWidth=lw||2;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);var a=Math.atan2(y2-y1,x2-x1);ctx.moveTo(x2,y2);ctx.lineTo(x2-12*Math.cos(a-.38),y2-12*Math.sin(a-.38));ctx.lineTo(x2-12*Math.cos(a+.38),y2-12*Math.sin(a+.38));ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
+// Силы '#c0392b', Реакции '#1a5276', Конструкция '#2c2c3e', шрифт 'bold 13px Georgia'
+// Нарисуй схему: опоры, силы со стрелками, реакции, размеры, подписи.
 </CANVAS>
-
 <SOLUTION>
-[ШАГ 1] Описание действия = формула → числовой результат
+[ШАГ 1] действие = формула = число с единицами
 [ШАГ 2] ...
-(каждый шаг — отдельная строка)
 </SOLUTION>
-
-<ANSWER>
-Числовые ответы с единицами измерения
-</ANSWER>
-
-<VERIFY>
-Проверка: (объясни как проверил — размерности, сумма сил=0, альтернативный метод, физический смысл)
-Вывод: корректно / найдена ошибка (если ошибка — укажи где и исправь)
-</VERIFY>
-
-БАЗА ЗНАНИЙ:
-${builtinEx}
-${userEx}`;
+<ANSWER>Ответы с единицами измерения</ANSWER>
+<VERIFY>Проверка: размерности верны, ΣF=0 выполняется</VERIFY>`;
 }
 
 // ═══════════════════════════════════════
@@ -1418,7 +1354,7 @@ async function send() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 4000,
+        max_tokens: 1500,
         system: buildPrompt(),
         messages: [{ role:'user', content }]
       })
