@@ -70,13 +70,19 @@ def proxy_openai():
         resp = requests.post(
             "https://aiprimetech.io/v1/chat/completions",
             headers={
-                "Content-Type": "application/json",
+                "Content-Type": "application/json; charset=utf-8",
                 "Authorization": f"Bearer {openai_key}",
+                "Accept": "application/json",
+                "Accept-Charset": "utf-8",
             },
             json=request.get_json(),
             timeout=180,
         )
-        return jsonify(resp.json()), resp.status_code
+        resp.encoding = 'utf-8'
+        data = resp.json()
+        response = jsonify(data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response, resp.status_code
     except Exception as e:
         return jsonify({"error": {"message": str(e)}}), 500
 
