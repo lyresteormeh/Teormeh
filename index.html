@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -962,8 +962,8 @@ if (window.Telegram?.WebApp) {
 // ═══════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════
-const PROXY_URL = 'https://web-production-0e519.up.railway.app/proxy/anthropic';
-const MODEL = 'claude-opus-4-7'; // Claude Opus — самая умная модель
+const PROXY_URL = 'https://web-production-0e519.up.railway.app/proxy/openai';
+const MODEL = 'gpt-5.5';
 
 // ═══════════════════════════════════════
 // STATE
@@ -1048,7 +1048,13 @@ renderExamples();
 // IMAGES
 // ═══════════════════════════════════════
 document.getElementById('sb-file').addEventListener('change', function(e){
-  loadImg(e.target.files[0], b64 => {
+  const f = e.target.files[0]; if(!f) return;
+  if(f.size > 15 * 1024 * 1024) {
+    alert('Фото слишком большое. Максимум 15 МБ.');
+    e.target.value = '';
+    return;
+  }
+  loadImg(f, b64 => {
     sbImg = b64;
     document.getElementById('sb-img').src = 'data:image/jpeg;base64,'+b64;
     document.getElementById('sb-preview').style.display = 'block';
@@ -1076,6 +1082,11 @@ function rmSbImg() {
 
 function onInlineImg(input) {
   const f = input.files[0]; if(!f) return;
+  if(f.size > 15 * 1024 * 1024) {
+    alert('Фото слишком большое. Максимум 15 МБ.');
+    input.value = '';
+    return;
+  }
   loadImg(f, b64 => {
     inlineImg = b64;
     document.getElementById('att-badge').style.display = 'inline';
@@ -1083,9 +1094,25 @@ function onInlineImg(input) {
 }
 
 function loadImg(file, cb) {
-  const r = new FileReader();
-  r.onload = e => cb(e.target.result.split(',')[1]);
-  r.readAsDataURL(file);
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = e => {
+    img.onload = () => {
+      // Сжимаем до 800px макс — снижает токены в 4-5 раз
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      cb(canvas.toDataURL('image/jpeg', 0.7).split(',')[1]);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 // ═══════════════════════════════════════
@@ -1349,24 +1376,38 @@ async function send() {
     if(txt) content.push({ type:'text', text:txt });
     if(!txt && img) content.push({ type:'text', text:'Реши задачу на этом фото. Если на фото есть рисунок — учти геометрию при построении схемы на Canvas. Дополни схему всеми необходимыми элементами.' });
 
+    // Таймаут 90 сек — если модель зависла, прерываем
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 180000);
+
+    // OpenAI формат
+    const oaiContent = [];
+    if(img) oaiContent.push({ type:'image_url', image_url:{ url:`data:image/jpeg;base64,${img}`, detail:'low' }});
+    if(txt) oaiContent.push({ type:'text', text: txt });
+    if(!txt && img) oaiContent.push({ type:'text', text:'Реши задачу на этом фото. Если есть рисунок — учти геометрию при построении схемы на Canvas.' });
+
     const resp = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 1500,
-        system: buildPrompt(),
-        messages: [{ role:'user', content }]
+        max_tokens: 2500,
+        messages: [
+          { role:'system', content: buildPrompt() },
+          { role:'user', content: oaiContent }
+        ]
       })
     });
+    clearTimeout(timer);
 
     const data = await resp.json();
     hideLoading();
 
-    if(data.error) {
+    if(data.error || !data.choices) {
       addBotMsg(`<p style="color:var(--red)">Ошибка: ${esc(data.error.message)}</p>`);
     } else {
-      const raw = (data.content||[]).map(b => b.text||'').join('');
+      const raw = data.choices?.[0]?.message?.content || '';
       const chat = document.getElementById('chat');
       const msgDiv = document.createElement('div');
       msgDiv.className = 'msg bot';

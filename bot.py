@@ -59,6 +59,28 @@ def health():
 
 
 # ── ANTHROPIC PROXY ────────────────────────────────────────
+@app.route("/proxy/openai", methods=["POST", "OPTIONS"])
+def proxy_openai():
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    openai_key = os.environ.get("OPENAI_API_KEY", "")
+    if not openai_key:
+        return jsonify({"error": {"message": "OPENAI_API_KEY не задан"}}), 400
+    try:
+        resp = requests.post(
+            "https://aiprimetech.io/v1/chat/completions",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {openai_key}",
+            },
+            json=request.get_json(),
+            timeout=180,
+        )
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({"error": {"message": str(e)}}), 500
+
+
 @app.route("/proxy/anthropic", methods=["POST", "OPTIONS"])
 def proxy_anthropic():
     if request.method == "OPTIONS":
