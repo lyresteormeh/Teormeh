@@ -94,6 +94,8 @@ def proxy_anthropic():
     if not ANTHROPIC_KEY:
         return jsonify({"error": {"message": "ANTHROPIC_API_KEY не задан"}}), 400
     try:
+        payload = request.get_json()
+        print(f">>> PROXY REQUEST: model={payload.get('model')}, messages={len(payload.get('messages',[]))}, system_len={len(payload.get('system',''))}")
         resp = requests.post(
             "https://aiprimetech.io/v1/messages",
             headers={
@@ -101,11 +103,13 @@ def proxy_anthropic():
                 "x-api-key": ANTHROPIC_KEY,
                 "anthropic-version": "2023-06-01",
             },
-            json=request.get_json(),
+            json=payload,
             timeout=180,
         )
+        print(f">>> PROXY RESPONSE: status={resp.status_code}, body={resp.text[:300]}")
         return jsonify(resp.json()), resp.status_code
     except Exception as e:
+        print(f">>> PROXY ERROR: {e}")
         return jsonify({"error": {"message": str(e)}}), 500
 
 
