@@ -6,6 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ТеорМех</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInDocument()"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
@@ -55,6 +59,16 @@ html, body {
   font-size: 14px;
   line-height: 1.6;
 }
+
+/* ═══════════════════════════════════════
+   KATEX MATH STYLES
+═══════════════════════════════════════ */
+.katex { font-size: 1em !important; color: var(--gold-light); }
+.katex-display { margin: 8px 0 !important; overflow-x: auto; }
+.katex-display .katex { color: var(--gold-light); }
+.math-line .katex { color: var(--gold-light); font-size: 0.95em !important; }
+.step-item .katex { color: var(--text); }
+.answer-value .katex { color: var(--green); font-size: 1.1em !important; }
 
 /* ═══════════════════════════════════════
    SCROLLBAR
@@ -950,6 +964,28 @@ textarea::placeholder { color: var(--text-3); }
 
 <script>
 // ═══════════════════════════════════════
+// MATH RENDERING
+// ═══════════════════════════════════════
+function renderMathInDocument() {
+  // Auto-render called when KaTeX loads
+}
+
+function renderMath(el) {
+  if (window.renderMathInElement) {
+    renderMathInElement(el, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true }
+      ],
+      throwOnError: false,
+      output: 'html'
+    });
+  }
+}
+
+// ═══════════════════════════════════════
 // TELEGRAM INIT
 // ═══════════════════════════════════════
 if (window.Telegram?.WebApp) {
@@ -962,8 +998,8 @@ if (window.Telegram?.WebApp) {
 // ═══════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════
-const PROXY_URL = 'https://web-production-0e519.up.railway.app/proxy/openai';
-const MODEL = 'gpt-5.5';
+const PROXY_URL = 'https://web-production-0e519.up.railway.app/proxy/anthropic';
+const MODEL = 'claude-sonnet-4-6';
 
 // ═══════════════════════════════════════
 // STATE
@@ -1297,6 +1333,9 @@ function parseAndRender(text, bubble) {
     const slot = bubble.querySelector('#canvas-slot');
     if(slot) slot.replaceWith(renderCanvas(canvas, section));
   }
+
+  // Рендерим математику через KaTeX
+  requestAnimationFrame(() => renderMath(bubble));
 }
 
 // ═══════════════════════════════════════
@@ -1343,11 +1382,12 @@ function buildPrompt() {
 // Нарисуй схему: опоры, силы со стрелками, реакции, размеры, подписи.
 </CANVAS>
 <SOLUTION>
-[ШАГ 1] действие = формула = число с единицами
+[ШАГ 1] описание: $формула$ = $результат$ единицы
 [ШАГ 2] ...
+(используй LaTeX: $x^2$, $\sqrt{x}$, $\frac{a}{b}$, $\sum F=0$, $\alpha$, $\omega$, $\cdot$ и т.д.)
 </SOLUTION>
-<ANSWER>Ответы с единицами измерения</ANSWER>
-<VERIFY>Проверка: размерности верны, ΣF=0 выполняется</VERIFY>`;
+<ANSWER>$результат$ единицы</ANSWER>
+<VERIFY>Проверка: $\sum F_x = 0$, размерности верны</VERIFY>`;
 }
 
 // ═══════════════════════════════════════
@@ -1380,11 +1420,11 @@ async function send() {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 180000);
 
-    // OpenAI формат
-    const oaiContent = [];
-    if(img) oaiContent.push({ type:'image_url', image_url:{ url:`data:image/jpeg;base64,${img}`, detail:'low' }});
-    if(txt) oaiContent.push({ type:'text', text: txt });
-    if(!txt && img) oaiContent.push({ type:'text', text:'Реши задачу на этом фото. Если есть рисунок — учти геометрию при построении схемы на Canvas.' });
+    // Anthropic формат
+    const anthContent = [];
+    if(img) anthContent.push({ type:'image', source:{ type:'base64', media_type:'image/jpeg', data:img }});
+    if(txt) anthContent.push({ type:'text', text: txt });
+    if(!txt && img) anthContent.push({ type:'text', text:'Реши задачу на этом фото. Если есть рисунок — учти геометрию при построении схемы на Canvas.' });
 
     const resp = await fetch(PROXY_URL, {
       method: 'POST',
@@ -1393,21 +1433,20 @@ async function send() {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 2500,
-        messages: [
-          { role:'system', content: buildPrompt() },
-          { role:'user', content: oaiContent }
-        ]
+        system: buildPrompt(),
+        messages: [{ role:'user', content: anthContent }]
       })
     });
     clearTimeout(timer);
 
-    const data = await resp.json();
+    const text = await resp.text();
+    const data = JSON.parse(new TextDecoder('utf-8').decode(new TextEncoder().encode(text)));
     hideLoading();
 
-    if(data.error || !data.choices) {
+    if(data.error) {
       addBotMsg(`<p style="color:var(--red)">Ошибка: ${esc(data.error.message)}</p>`);
     } else {
-      const raw = data.choices?.[0]?.message?.content || '';
+      const raw = (data.content||[]).map(b => b.text||'').join('');
       const chat = document.getElementById('chat');
       const msgDiv = document.createElement('div');
       msgDiv.className = 'msg bot';
