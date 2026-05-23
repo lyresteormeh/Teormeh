@@ -102,7 +102,7 @@ def proxy_anthropic():
                 "anthropic-version": "2023-06-01",
             },
             json=request.get_json(),
-            timeout=120,
+            timeout=180,
         )
         return jsonify(resp.json()), resp.status_code
     except Exception as e:
